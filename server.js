@@ -8,12 +8,19 @@ const PORT = process.env.PORT || 8080;
 
 const app = express();
 
+
+// Body parser, reading data from body into req.body
+app.use(express.json({
+  limit: '15kb'
+}));
+
 // Just so the request is not blocked by cors
 app.use(cors());
 
 // logger middleware
+
 app.use((req, res, next) => {
-  console.log("LOG: ", req.body || req);
+  console.log('LOG:', req)
   next()
 })
 
@@ -36,8 +43,7 @@ async function main() {
   }
 }
 
-// Running the main function 
-main().catch(console.dir);
+
 
 
 // get all lessons
@@ -58,13 +64,15 @@ app.get('/lessons', async (req, res) => {
     });
 });
 
-
+app.post('/rest', (req, res, next) => {
+  console.log("req===>", req.body)
+})
 
 // create lesson
 app.post('/lessons', async (req, res) => {
-
+  console.log("body ===> ", req.body);
   async function createLesson(client, newLesson) {
-    const result = await client.db("mydb").collection("lessons").insertOne({...newLesson});
+    const result = await client.db("mydb").collection("lessons").insertOne({ ...newLesson });
     console.log(`new lesson added with the following id: ${result.insertedId}`);
     res.status(200).json(result)
 
@@ -189,7 +197,7 @@ app.get('/orders', async (req, res) => {
 app.post('/orders', async (req, res) => {
 
   async function createOrder(client, newOrder) {
-    const result = await client.db("mydb").collection("orders").insertOne(newOrder);
+    const result = await client.db("mydb").collection("orders").insertOne({ ...newOrder });
     console.log(`new order added with the following id: ${result.insertedId}`);
     res.status(200).json(result)
 
@@ -199,12 +207,7 @@ app.post('/orders', async (req, res) => {
   try {
     await client.connect();
 
-    await createOrder(client, {
-      Name: "test1",
-      LessonId: "61f1aed065d80ac4de3ecdcf1",
-      PhoneNumber: 3436713456,
-      Spaces: 3,
-    });
+    await createOrder(client, req.body);
 
 
   } catch (error) {
@@ -252,3 +255,6 @@ app.put('/order/:LessonId', async (req, res) => {
 app.get('/user', async (req, res) => {
   return res.json({ 'email': 'user@email.com', 'password': 'mypassword' });
 });
+
+// Running the main function 
+main().catch(console.dir);
