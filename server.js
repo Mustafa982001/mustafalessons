@@ -2,7 +2,8 @@ const express = require('express');
 const { MongoClient } = require("mongodb");
 const cors = require('cors');
 
-const DB_CONN_URI = "mongodb+srv://mustafa:12345@cluster0.dv0a3.mongodb.net/mydb?retryWrites=true&w=majority";
+const DB_CONN_URI = "mongodb+srv://mustafa:12345@cluster0.puu8j.mongodb.net/mydb";
+
 const PORT = process.env.PORT || 8080;
 
 const app = express();
@@ -11,8 +12,10 @@ const app = express();
 app.use(cors());
 
 // logger middleware
-const { logger } = require('./middleware')
-app.use(() => logger)
+app.use((req, res, next) => {
+  console.log("LOG: ", req);
+  next()
+})
 
 // Connecting to the Database 
 const client = new MongoClient(DB_CONN_URI);
