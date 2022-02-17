@@ -71,18 +71,7 @@ app.post('/lessons', async (req, res) => {
   }
   try {
     await client.connect();
-
-    await createLesson(client, {
-      id: 43,
-      Icon: "fa-desktop",
-      Subject: "ICT",
-      Location: "Neasden",
-      Price: 23,
-      Spaces: 5,
-      Image: "./images/Ict.jpg"
-    });
-
-
+    await createLesson(client, {...req.body});
   } catch (error) {
 
     console.log(error)
