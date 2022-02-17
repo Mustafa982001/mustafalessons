@@ -13,7 +13,7 @@ app.use(cors());
 
 // logger middleware
 app.use((req, res, next) => {
-  console.log("LOG: ", req);
+  console.log("LOG: ", req.body || req);
   next()
 })
 
@@ -64,14 +64,14 @@ app.get('/lessons', async (req, res) => {
 app.post('/lessons', async (req, res) => {
 
   async function createLesson(client, newLesson) {
-    const result = await client.db("mydb").collection("lessons").insertOne(newLesson);
+    const result = await client.db("mydb").collection("lessons").insertOne({...newLesson});
     console.log(`new lesson added with the following id: ${result.insertedId}`);
     res.status(200).json(result)
 
   }
   try {
     await client.connect();
-    await createLesson(client, {...req.body});
+    await createLesson(client, req.body);
   } catch (error) {
 
     console.log(error)
