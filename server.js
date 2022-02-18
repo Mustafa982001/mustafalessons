@@ -1,5 +1,5 @@
 const express = require('express');
-const { MongoClient } = require("mongodb");
+const { MongoClient, ObjectId } = require("mongodb");
 const cors = require('cors');
 
 const DB_CONN_URI = "mongodb+srv://mustafa:12345@cluster0.puu8j.mongodb.net/mydb";
@@ -19,10 +19,10 @@ app.use(cors());
 
 // logger middleware
 
-app.use((req, res, next) => {
-  console.log('LOG:', req)
-  next()
-})
+// app.use((req, res, next) => {
+// console.log('LOG:', req)
+// next()
+// })
 
 // Connecting to the Database 
 const client = new MongoClient(DB_CONN_URI);
@@ -175,13 +175,13 @@ app.get('/search/:query', async (req, res) => {
 // get all orders info
 
 
-app.get('/orders', async (req, res) => {
+app.get('/orders/:orderId', async (req, res) => {
   // Connecting to the database
   await client.connect();
   // Getting all the lessons from the database
   client.db('mydb')
-    .collection('orders')
-    .find()
+    .collection('ordersItems')
+    .find({ "orderId": req.params.orderId })
     .toArray((err, result) => {
       // If there is an error, return the error
       if (err)
@@ -221,20 +221,21 @@ app.post('/orders', async (req, res) => {
   }
 });
 
-///edit order
 
-app.put('/order/:LessonId', async (req, res) => {
-  console.log(req.params.Icon)
+// delete lesson from order
+app.delete('/orders/:orderItemId', async (req, res) => {
+  console.log("req.params.orderItemId=======>", req.params.orderItemId)
+  async function DeleteOrderItem(client) {
+    const result = await client.db("mydb").collection("ordersItems").deleteOne({ _id: ObjectId(req.params.orderItemId) });
+    console.log(`${result.deletedCount} items were deleted`);
+    res.status(200).json(result)
+
+  }
 
   try {
     await client.connect();
 
-    await updateOrderById(client, req.params.LessonId, {
-      LessonId: req.params.LessonId,
-      Name: req.params.Name,
-      PhoneNumber: req.params.PhoneNumber,
-      Spaces: req.params.Spaces
-    });
+    await DeleteOrderItem(client);
 
   } catch (error) {
     console.log(error)
@@ -243,14 +244,98 @@ app.put('/order/:LessonId', async (req, res) => {
     await client.close();
   }
 
-  async function updateOrderById(client, idOfOrder, updateOrder) {
-    const result = await client.db("mydb").collection("lessons").updateOne({ LessonId: idOfOrder }, { $set: updateOrder });
-    console.log(`${result.matchedCount} orders matched the query`);
-    console.log(`${result.modifiedCount} order was updated`);
+
+
+
+});
+
+// add order items to orderItems collection with the order  id
+app.post('/orders/:orderId/:itemId', async (req, res) => {
+
+  // get the lesson
+  async function findLesson(client) {
+    const result = await client.db("mydb").collection("lessons").findOne({ '_id': ObjectId(req.params.itemId) });
+    return result
+  }
+
+  // check if the lesson is inside order
+  async function findLessonOnOrder(client) {
+    const result = await client.db("mydb").collection("ordersItems").findOne({ 'itemId': ObjectId(req.params.itemId), "orderId": req.params.orderId });
+    console.log("result========>", result);
+    return result
+  }
+
+  // create a new order item
+  async function createOrder(client, lesson) {
+    const result = await client
+      .db("mydb").collection("ordersItems")
+      .insertOne({ "orderId": req.params.orderId, "itemId": lesson._id, ...lesson, "Spaces": 1 });
+    console.log(`new order item added with the following id: ${result.insertedId}`);
     res.status(200).json(result)
   }
 
-})
+  // update orderLesson
+  async function updateOrder(client, updateOrder, id) {
+    const result = await client
+      .db("mydb")
+      .collection("ordersItems")
+      .updateOne(
+        { _id: ObjectId(id) },
+        { $set: { ...updateOrder } },
+        {
+          upsert: true,
+        }
+      );
+    console.log(`new order item updated`);
+    res.status(200).json(result)
+  }
+
+
+  try {
+    await client.connect();
+    let lesson = await findLesson(client)
+    let lessonOnOrder = await findLessonOnOrder(client)
+    // if lesson is on order, update spaces else, add it afresh
+    if (!!lessonOnOrder) {
+      if (lessonOnOrder.Spaces < 5) {
+        let oldLesson = {
+          "id": lessonOnOrder.id,
+          "itemId": lessonOnOrder._id,
+          "Icon": lessonOnOrder.Icon,
+          "Subject": lessonOnOrder.Subject,
+          "Location": lessonOnOrder.Location,
+          "Price": lessonOnOrder.Price,
+          "Image": lessonOnOrder.Image,
+          'Spaces': lessonOnOrder.Spaces + 1
+        }
+        await updateOrder(client, oldLesson, lessonOnOrder._id)
+      }
+    } else {
+      let newLesson = {
+        "id": lesson.id,
+        "itemId": lesson._id,
+        "Icon": lesson.Icon,
+        "Subject": lesson.Subject,
+        "Location": lesson.Location,
+        "Price": lesson.Price,
+        "Image": lesson.Image
+      }
+      await createOrder(client, newLesson);
+    }
+
+  } catch (error) {
+
+    console.log(error)
+  } finally {
+
+
+    // Close the connection to the database
+    await client.close();
+  }
+});
+
+
+
 
 app.get('/user', async (req, res) => {
   return res.json({ 'email': 'user@email.com', 'password': 'mypassword' });

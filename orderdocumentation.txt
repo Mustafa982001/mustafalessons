@@ -1,0 +1,13 @@
+1. send a create order request
+    post => /orders/ 
+    returns an order id that will be used to add items to order
+
+2. add item to order
+    post => /orders/:orderId
+    {...lesson}
+
+3. update spaces inside order items
+    put => /orders/:orderId
+    {
+        "orderId": "620ecce1b48a97bc07ee2f14"
+    }
