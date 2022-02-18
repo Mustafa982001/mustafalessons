@@ -19,10 +19,10 @@ app.use(cors());
 
 // logger middleware
 
-// app.use((req, res, next) => {
-// console.log('LOG:', req)
-// next()
-// })
+app.use((req, res, next) => {
+  console.log('LOG:', req)
+  next()
+})
 
 // Connecting to the Database 
 const client = new MongoClient(DB_CONN_URI);
